@@ -13,6 +13,9 @@ app.use('/', home);
 const employee = require('./src/employee/employee');
 app.use('/employee', employee);
 
+const user = require('./app/routes/user');
+app.use('/user', user);
+
 
 var port = 5000;
 app.listen(port, () => {
