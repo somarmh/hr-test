@@ -1,14 +1,32 @@
 const express = require('express')
 const jwt = require('jsonwebtoken')
-const User = require("./app/models/user");
-const auth = require("./middleware/auth");
+const User = require('../models/user');
+const auth = require("../middleware/auth");
+const config = require('../config/auth_config');
 const bcrypt = require("bcryptjs");
 
 
 let router = express.Router();
 
-// ...
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  //const user = await User.findOne({ email });
+  const userDetails = {email : email};//from database
+  try{
+      const token = await jwt.sign(userDetails, config.secretKey, {expiresIn:10000})
+      const refreshToken = await jwt.sign(userDetails, config.secretKeyRefresh, {expiresIn:864000})
+      return res.json({success:true, accessToken: token, refreshToken: refreshToken});
+  } catch(err){
+      console.log(err);
+      return  res.json({success:false, msg: err.message})
+  }
+});
 
+
+// ...
+//CRUD
+
+//C
 router.post("/register", async (req, res) => {
 
     // Our register logic starts here
@@ -23,7 +41,7 @@ router.post("/register", async (req, res) => {
   
       // check if user already exist
       // Validate if user exist in our database
-      const oldUser = await User.findOne({ email });
+      const oldUser = await User.findOne({email});
   
       if (oldUser) {
         return res.status(409).send("User Already Exist. Please Login");
@@ -42,37 +60,15 @@ router.post("/register", async (req, res) => {
         phone
       });
   
-      // Create token
-      const token = jwt.sign(
-        { user_id: user._id, email },
-        process.env.TOKEN_KEY,
-        {
-          expiresIn: "2h",
-        }
-      );
-      // save user token
-      user.token = token;
-  
       // return new user
       res.status(201).json(user);
     } catch (err) {
       console.log(err);
+      return  res.json({success:false, msg: err.message})
     }
     // Our register logic ends here
 });
   
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  //const user = await User.findOne({ email });
-  const userDetails = {email : email};//from database
-  try{
-      const token = await jwt.sign(userDetails, secretKey, {expiresIn:10000})
-      const refreshToken = await jwt.sign(userDetails, secretKeyRefresh, {expiresIn:864000})
-      return res.json({success:true, accessToken: token, refreshToken: refreshToken});
-  } catch(err){
-      console.log(err);
-      return  res.json({success:false, msg: err.message})
-  }
-});
+
 
 module.exports = router;
