@@ -1,12 +1,9 @@
 const express = require('express')
-//const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken')
 //const User1 = require('../models/usermodel.js');
-//const auth = require("../middleware/auth");
-//const config = require('../config/auth_config');
+const auth = require("../middleware/auth");
+const config = require('../config/auth_config');
 const bcrypt = require("bcryptjs");
-
-
-
 
 const oracledb = require('oracledb');
 oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
@@ -16,19 +13,52 @@ let router = express.Router();
 
 const dbconnection = require("../config/db_config");
 let connAttr = dbconnection.connAttr;
-
+/*const findOne= (email,password) => {
+  oracledb.getConnection(connAttr, function(err, connection){
+    let query = "select id from \"USER\" where EMAIL = '"+email+ "' and PASSWORD = '" + password+"'";
+    console.log("Database Connected");
+    console.log(query);
+    connection.execute(query, {},{}, function(err, result){
+        if(err) {
+          console.log(err);
+        }
+        connection.release(function(err){
+          console.log("connection is  releasesd")
+        });
+        console.log(result);
+        return res.json({success: "true", user: result});
+        });
+    });
+}*/
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  //const user = await User.findOne({ email });
-  const userDetails = {email : email};//from database
+  const email = req.body.email;
+  const password = req.body.password;
+  let connection;
   try{
-      const token = await jwt.sign(userDetails, config.secretKey, {expiresIn:10000})
-      const refreshToken = await jwt.sign(userDetails, config.secretKeyRefresh, {expiresIn:864000})
-      return res.json({success:true, accessToken: token, refreshToken: refreshToken});
-  } catch(err){
+      connection = await oracledb.getConnection(connAttr);
+      let query = "select id from \"USER\" where EMAIL = '"+email+ "' and PASSWORD = '" + password+"'";
+      const result = await connection.execute(query);
+      console.log(result.rows.length);
+      if(result.rows.length != 0){
+        const userDetails = {email : email , password :password};//from database
+        try{
+            const token = await jwt.sign(userDetails, config.secretKey, {expiresIn:10000})
+            const refreshToken = await jwt.sign(userDetails, config.secretKeyRefresh, {expiresIn:864000})
+            return res.json({success:true, accessToken: token, refreshToken: refreshToken});
+        } catch(err){
+            console.log(err);
+            return  res.json({success:false, msg: err.message})
+        }
+      }
+      else{
+          return res.json({succsess:false, msg: "not valid creditals"});
+      } 
+  }catch(err){
       console.log(err);
-      return  res.json({success:false, msg: err.message})
-  }
+      return res.json({success : false, msg: err.message}); 
+  }finally{
+      await connection.release();
+  }  
 });
 
 
@@ -36,37 +66,41 @@ router.post("/login", async (req, res) => {
 //CRUD
 
 //Read
-router.post("/getUsers", function(req, res){
-  oracledb.getConnection(connAttr, function(err, connection){
-  let query = 'SELECT ID, EMAIL, HASH_PASSWORD ,PHONE, ADDRESS ,FIRST_NAME, LAST_NAME FROM "User" ';
-  console.log("Database Connected");
-  connection.execute(query, {},{}, function(err, result){
-      if(err) {
+router.get("/getUsers", auth.verifyToken, async(req, res) =>{
+  const decodedToken = res.locals.decodedToken;
+  const email = decodedToken.email;
+  if(email == "Ghaffar"){
+    let connection;
+    try{
+        connection = await oracledb.getConnection(connAttr);
+        let query = 'SELECT ID, EMAIL, PASSWORD ,PHONE, ADDRESS ,FIRST_NAME, LAST_NAME FROM "USER" ';
+        const result = await connection.execute(query);
+        console.log(result);
+        return res.json(result.rows);
+    }catch(err){
         console.log(err);
-      }
-      connection.release(function(err){
-        console.log("connection is  releasesd")
-      });
-      console.log(result);
-      return res.json({success: "true", user: result});
-      });
-    
-  });
+        return res.json({success : false, msg: err.message}); 
+    }finally{
+        await connection.release();
+    }
+}
+else{
+    return res.json({success: false, msg: "Unauthorized.."}); 
+}
 });
 
-
 //CREATE
-router.post("/adduser", function (req, res) {
+router.post("/addUser", function (req, res) {
   oracledb.getConnection(connAttr, function (err, connection) {
       if (err) {
           console.log(err);
       }
       console.log("Connected to Database");
       let query =
-          'insert into "User" (EMAIL , HASH_PASSWORD , PHONE , ADDRESS , FIRST_NAME , LAST_NAME) values( :EMAIL , :HASH_PASSWORD , :PHONE , :ADDRESS , :FIRST_NAME , :LAST_NAME )';
+          'insert into "USER" (EMAIL , PASSWORD , PHONE , ADDRESS , FIRST_NAME , LAST_NAME) values( :EMAIL , :PASSWORD , :PHONE , :ADDRESS , :FIRST_NAME , :LAST_NAME )';
       let binds = [
           req.body.EMAIL,
-          bcrypt.hashSync(req.body.PASSWORD, 8),
+          req.body.PASSWORD,
           req.body.PHONE,
           req.body.ADDRESS,
           req.body.FIRST_NAME,
@@ -101,7 +135,7 @@ router.get("/DeleteUser/:id", function (req, res) {
       console.log(err);
     }
     console.log("Connected to Database")
-    let query = 'Delete  from "User"  where ID = ' + id ;
+    let query = 'Delete  from "USER"  where ID = ' + id ;
     connection.execute(query, {}, {autoCommit: true }, function(err, result){
       console.log("Executing query...")
       if(err){
@@ -128,7 +162,7 @@ router.post("/updateUser/:id", function (req, res) {
       console.log("Connected to Database");
       let id = req.params.id;
       let query =
-          'Update "User" set EMAIL = :EMAIL , HASH_PASSWORD = :HASH_PASSWORD , PHONE = :PHONE , ADDRESS = :ADDRESS , FIRST_NAME = :FIRST_NAME , LAST_NAME = :LAST_NAME where id = '+ id;
+          'Update "USER" set EMAIL = :EMAIL , HASH_PASSWORD = :HASH_PASSWORD , PHONE = :PHONE , ADDRESS = :ADDRESS , FIRST_NAME = :FIRST_NAME , LAST_NAME = :LAST_NAME where id = '+ id;
 
       let binds = [
           req.body.EMAIL,

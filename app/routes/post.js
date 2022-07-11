@@ -1,19 +1,30 @@
 const express = require('express')
+//const jwt = require('jsonwebtoken')
+//const User1 = require('../models/usermodel.js');
+//const auth = require("../middleware/auth");
+//const config = require('../config/auth_config');
+const bcrypt = require("bcryptjs");
+
+
+
+
 const oracledb = require('oracledb');
 oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
+//const axios = require('axios');
 
 let router = express.Router();
 
 const dbconnection = require("../config/db_config");
 let connAttr = dbconnection.connAttr;
 
+
 // ...
 //CRUD
 
 //Read
-router.get("/getTimeLinePost", function(req, res){
+router.get("/getPosts", function(req, res){
   oracledb.getConnection(connAttr, function(err, connection){
-  let query = 'SELECT ID, POST_ID, USER_ID FROM "Timeline Post" ';
+  let query = 'SELECT ID, OWNER_ID, TEXT ,POST_DATE FROM "POST" ';
   console.log("Database Connected");
   connection.execute(query, {},{}, function(err, result){
       if(err) {
@@ -31,17 +42,19 @@ router.get("/getTimeLinePost", function(req, res){
 
 
 //CREATE
-router.post("/createTimeLinePost", function (req, res) {
+router.post("/addPost", function (req, res) {
   oracledb.getConnection(connAttr, function (err, connection) {
       if (err) {
           console.log(err);
       }
       console.log("Connected to Database");
       let query =
-          'insert into "Timeline Post" (POST_ID , USER_ID) values( :POST_ID , :USER_ID )';
+          'insert into "POST" (ID , OWNER_ID , TEXT , POST_DATE ) values( :ID , :OWNER_ID , :TEXT , :POST_DATE )';
       let binds = [
-          req.body.POST_ID,
-          req.body.USER_ID,
+          req.body.ID,
+          req.body.OWNER_ID,
+          req.body.TEXT,
+          req.body.POST_DATE,
       ];
       connection.execute(
           query,
@@ -63,17 +76,18 @@ router.post("/createTimeLinePost", function (req, res) {
 });
 
 //Delete
-router.get("/deleteTimeLinePost/:id", function (req, res) {
+
+router.get("/deletePost/:id", function (req, res) {
   oracledb.getConnection(connAttr, function(err, connection){
     let id = req.params.id;
     console.log("id=" +id);
     if(err){
       console.log(err);
     }
-    console.log("Connected to Database")
-    let query = 'Delete  from "Timeline Post"  where ID = ' + id ;
+    console.log("Connected to Database");
+    let query = 'Delete  from "POST"  where ID = ' + id ;
     connection.execute(query, {}, {autoCommit: true }, function(err, result){
-      console.log("Executing query...")
+      console.log("Executing query...");
       if(err){
         console.log(err);
         return res.json({success: "false", msg: err.message});
@@ -90,7 +104,7 @@ router.get("/deleteTimeLinePost/:id", function (req, res) {
 
 
 //Update
-router.post("/updateTimeLinePost/:id", function (req, res) {
+router.post("/updatePost/:id", function (req, res) {
   oracledb.getConnection(connAttr, function (err, connection) {
       if (err) {
           console.log(err);
@@ -98,12 +112,13 @@ router.post("/updateTimeLinePost/:id", function (req, res) {
       console.log("Connected to Database");
       let id = req.params.id;
       let query =
-          'Update "Timeline Post" set POST_ID = :POST_ID , USER_ID = :USER_ID where id = '+ id;
+          'Update "POST" set OWNER_ID = :OWNER_ID , TEXT = :TEXT , POST_DATE = :POST_DATE  where id = '+ id;
 
       let binds = [
-            req.body.POST_ID,
-            req.body.USER_ID,
-        ];
+          req.body.OWNER_ID,
+          req.body.TEXT,
+          req.body.POST_DATE,
+      ];
 
       connection.execute(
           query,

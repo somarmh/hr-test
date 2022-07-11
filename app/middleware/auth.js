@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+const config = require('../config/auth_config');
+
 
 const verifyToken = (req, res, next) => {
     if(req.headers.authorization && req.headers.authorization.split(' ')[0] == 'Bearer'){
@@ -6,11 +8,10 @@ const verifyToken = (req, res, next) => {
     }else{
         return res.json({success: false, msg: "No token Provided"})
     }
-
     if(!token){
         return res.json({success: false, msg: "No token Provided"})
     }
-    jwt.verify(token, secret, (err, decoded) =>{
+    jwt.verify(token, config.secretKey, (err, decoded) =>{
         if(err){
             return res.json({success: false, msg: err.message}) 
         }
@@ -20,6 +21,7 @@ const verifyToken = (req, res, next) => {
         next();
     });
 };
+
 
 const authJwt = {
     verifyToken,
