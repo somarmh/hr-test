@@ -47,6 +47,7 @@ router.post("/login", async (req, res) => {
   }  
 });
 
+
 //refresh
 router.post("/refresh", function(req,res) {
   console.log("so");
@@ -70,6 +71,7 @@ router.post("/refresh", function(req,res) {
 // ...
 //CRUD
 
+
 //Read
 router.get("/getUsers", auth.verifyToken, async(req, res) =>{
     let connection;
@@ -90,7 +92,6 @@ router.get("/getUsers", auth.verifyToken, async(req, res) =>{
 
 //CREATE
 router.post("/addUser", auth.verifyToken, async(req, res) =>{
-  console.log("so22mar");
   let connection;
     try{
         connection = await oracledb.getConnection(connAttr);
