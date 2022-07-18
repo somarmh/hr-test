@@ -50,7 +50,6 @@ router.post("/login", async (req, res) => {
 
 //refresh
 router.post("/refresh", function(req,res) {
-  console.log("so");
   const refreshtoken=req.body.refreshToken;
   jwt.verify(refreshtoken, config.secretKeyRefresh, async (err, decoded) =>{
       if(err){
