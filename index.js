@@ -6,13 +6,6 @@ app.use(express.urlencoded({
     extended: true
 }));
  
-
-const home = require('./src/home/home');
-app.use('/', home);
-
-const employee = require('./src/employee/employee');
-app.use('/employee', employee);
-
 const user = require('./app/routes/user');
 app.use('/user', user);
 

@@ -1,7 +1,7 @@
 const express = require('express')
 //const jwt = require('jsonwebtoken')
 //const User1 = require('../models/usermodel.js');
-//const auth = require("../middleware/auth");
+const auth = require("../middleware/auth");
 //const config = require('../config/auth_config');
 const bcrypt = require("bcryptjs");
 
@@ -22,118 +22,91 @@ let connAttr = dbconnection.connAttr;
 //CRUD
 
 //Read
-router.get("/getLikes", function(req, res){
-  oracledb.getConnection(connAttr, function(err, connection){
-  let query = 'SELECT ID, POST_ID, LIKER_ID FROM "LIKE" ';
-  console.log("Database Connected");
-  connection.execute(query, {},{}, function(err, result){
-      if(err) {
-        console.log(err);
-      }
-      connection.release(function(err){
-        console.log("connection is  releasesd")
-      });
+router.get("/getLikes", auth.verifyToken, async(req, res) =>{
+  let connection;
+  try{
+      connection = await oracledb.getConnection(connAttr);
+      let query = 'SELECT ID, POST_ID, LIKER_ID FROM "LIKE" ';
+      const result = await connection.execute(query, {}, {autoCommit: true });
       console.log(result);
-      return res.json({success: "true", user: result});
-      });
-    
-  });
+      return res.json(result.rows);
+  }catch(err){
+      console.log(err);
+      return res.json({success : false, msg: err.message}); 
+  }finally{
+      await connection.release();
+  }
 });
 
 
 //CREATE
-router.post("/addLike", function (req, res) {
-  oracledb.getConnection(connAttr, function (err, connection) {
-      if (err) {
-          console.log(err);
-      }
-      console.log("Connected to Database");
-      let query =
+router.post("/addLike", auth.verifyToken, async(req, res) =>{
+  let connection;
+    try{
+        connection = await oracledb.getConnection(connAttr);
+        let query =
           'insert into "LIKE" (POST_ID , LIKER_ID ) values( :POST_ID , :LIKER_ID )';
-      let binds = [
-          req.body.POST_ID,
-          req.body.LIKER_ID,
-      ];
-      connection.execute(
-          query,
-          binds,
-          { autoCommit: true },
-          function (err, result) {
-              console.log("Executing query....");
-              if (err) {
-                  console.log(err);
-              }
-
-              connection.release(function (err) {
-                  console.log("connection is releasesd");
-              });
-              return res.json(result.rows);
-          }
-      );
-  });
+        let binds = [
+            req.body.POST_ID,
+            req.body.LIKER_ID,
+        ];       
+        const result = await connection.execute(query,binds,{ autoCommit: true });
+        console.log(result);
+        return res.json(result.rows);
+    }catch(err){
+        console.log(err);
+        return res.json({success : false, msg: err.message}); 
+    }finally{
+        await connection.release();
+    }
 });
+
 
 //Delete
-
-router.get("/deleteLike/:id", function (req, res) {
-  oracledb.getConnection(connAttr, function(err, connection){
-    let id = req.params.id;
-    console.log("id=" +id);
-    if(err){
+router.get("/deleteLike/:id", auth.verifyToken, async(req, res) =>{
+  let connection;
+  try{
+      connection = await oracledb.getConnection(connAttr);
+      let id = req.params.id;
+      console.log(id);
+      let query = 'Delete  from "LIKE"  where ID = ' + id ;
+      const result = await connection.execute(query, {}, {autoCommit: true });
+      console.log(result);
+      return res.json(result.rows);
+  }catch(err){
       console.log(err);
-    }
-    console.log("Connected to Database");
-    let query = 'Delete  from "LIKE"  where ID = ' + id ;
-    connection.execute(query, {}, {autoCommit: true }, function(err, result){
-      console.log("Executing query...");
-      if(err){
-        console.log(err);
-        return res.json({success: "false", msg: err.message});
-      }
-      connection.release(function(err){
-        console.log("connection is releasesd");
-      });
-      return res.json({success: "true"});
-    });
-
-  });
-
+      return res.json({success : false, msg: err.message}); 
+  }finally{
+      await connection.release();
+  }   
 });
+
 
 
 //Update
-router.post("/updateLike/:id", function (req, res) {
-  oracledb.getConnection(connAttr, function (err, connection) {
-      if (err) {
-          console.log(err);
-      }
-      console.log("Connected to Database");
-      let id = req.params.id;
-      let query =
+router.post("/updateLike/:id", auth.verifyToken, async(req, res) =>{
+  let id = req.params.id;
+  let connection;
+  try{
+    connection = await oracledb.getConnection(connAttr);
+    let query =
           'Update "LIKE" set POST_ID = :POST_ID , LIKER_ID = :LIKER_ID  where id = '+ id;
 
       let binds = [
         req.body.POST_ID,
         req.body.LIKER_ID,
       ];
-
-      connection.execute(
-          query,
-          binds,
-          { autoCommit: true },
-          function (err, result) {
-              console.log("Executing query....");
-              if (err) {
-                  console.log(err);
-              }
-              connection.release(function (err) {
-                  console.log("connection is releasesd");
-              });
-              return res.json(result.rows);
-          }
-      );
-  });
+    const result = await connection.execute(query, binds, {autoCommit: true });
+    console.log(result);
+        return res.json(result.rows);
+    }catch(err){
+        console.log(err);
+        return res.json({success : false, msg: err.message}); 
+   }finally{
+        await connection.release();
+    }   
 });
+
 
 
 
